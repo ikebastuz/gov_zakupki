@@ -886,16 +886,7 @@ class Api
 		if($numrows > 0){
 			$result = pg_fetch_all($results);
 			$output = array_merge($output, $result);
-		}
-		/*
-		if($by == 'name'){
-			$query .= " WHERE lower(p.title) LIKE '%".$string."%'";
-		} else if($by == 'code'){
-			$query .= " WHERE c.code='".$string."'";
-		}
-		*/
-			
-		
+		}		
 		
 		return $output;
 	}
