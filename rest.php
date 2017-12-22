@@ -16,8 +16,8 @@
     switch($type){
         case "search":
             $data = $api->searchProduct($query);
-            //echo json_encode($data, JSON_UNESCAPED_UNICODE );
-            print_r($data);
+            echo json_encode($data, JSON_UNESCAPED_UNICODE );
+            //print_r($data);
                         
             break;
         case "details":
