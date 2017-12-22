@@ -932,42 +932,6 @@ class Api
 		return $data;
 	}
 
-	public function parseOKPD2CSV(){
-		$filename = "list_okpd2.csv";
-		$handle = fopen($filename, 'r');
-
-		function cleanInput($str){
-			return trim(str_replace("'", "", $str));
-		}
-
-		$cnt = 0;
-		while (($buffer = fgets($handle, 4096)) !== false) {
-			$cnt++;
-			if ($cnt == 1)
-				continue;
-			
-			$row = $buffer;
-			$row = iconv("Windows-1251", "UTF-8", $buffer);
-			$arrl = explode(";", $row);
-			
-			if (count($arrl)>4) {
-				$data = array(
-					'id' => cleanInput($arrl[0]),
-					'code' => cleanInput($arrl[1]),
-					'name' => cleanInput($arrl[2]),
-					'oos_id' => cleanInput($arrl[3]),
-					'parent_id' => cleanInput($arrl[4]),
-					'parent_code' => cleanInput($arrl[5]),
-					'actual' => cleanInput($arrl[6]),
-				);
-
-				$this->findTableValueId('list_okpd2', $data, true);
-			}
-		}
-
-		
-	}
-
 	public function getCatalogTree($code){
 		$root_id = $this->findTableValueId('list_okpd2', array('code' => $code));
 
