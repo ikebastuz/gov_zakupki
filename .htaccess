@@ -1,0 +1,15 @@
+AddDefaultCharset UTF-8
+RewriteEngine on
+ErrorDocument 404 /404.php
+
+#remove the need for .php extention 
+RewriteCond %{REQUEST_FILENAME} !-d 
+RewriteCond %{REQUEST_FILENAME}\.php -f 
+#RewriteRule ^(.*)$ $1.php
+
+RewriteRule ^parser/([^/]+)?$ parser.php?mode=$1 [NC,L]
+
+RewriteRule ^product/search/([^/]+)?$ rest.php?type=search&query=$1 [NC,L]
+RewriteRule ^product/details/([^/]+)?$ rest.php?type=details&query=$1 [NC,L]
+RewriteRule ^catalog/([^/]+)?$ rest.php?type=catalog&query=$1 [NC,L]
+RewriteRule ^product/?$ product.php [NC,L]
