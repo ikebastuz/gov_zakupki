@@ -6,6 +6,7 @@ PHP v.5.4 +
 ```bash
 {
     "database" : {
+        "host" : "localhost",
         "username" : "",
         "password" : "",
         "database" : "",

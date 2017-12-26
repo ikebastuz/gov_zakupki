@@ -40,6 +40,7 @@ class Api
 		$this->config = json_decode(file_get_contents('./config.json'));
 		
 		// DB variables
+		$this->db_host = $this->config->database->host;
 		$this->db_username = $this->config->database->username;
 		$this->db_password = $this->config->database->password;
 		$this->db_dbname = $this->config->database->database;
@@ -54,7 +55,7 @@ class Api
 		self::$no_okei = $this->config->no_okei;
 
 		// Set up DB connection
-		$this->conn = pg_Connect("dbname=".$this->db_dbname." user=".$this->db_username." password=".$this->db_password);
+		$this->conn = pg_Connect("host=".$this->db_host." dbname=".$this->db_dbname." user=".$this->db_username." password=".$this->db_password);
 	}
 
 	public function importData(){
