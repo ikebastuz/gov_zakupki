@@ -1,0 +1,15 @@
+{
+    "database" : {
+        "username" : "postgres",
+        "password" : "",
+        "database" : "ktru",
+        "collection" : "public"
+    },
+    "no_okei" : 283,
+    "files" : {
+        "archive_folder" : "src_files",
+        "import_folder" : "import_files",
+        "error_log" : "error.log"
+    },
+    "scan_period" : 86400
+}

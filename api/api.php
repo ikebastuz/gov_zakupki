@@ -3,20 +3,12 @@
 class Api
 {	
 	// DB settings
-	//private $db_servername = "localhost";
-	private $db_username = "postgres";
-	private $db_password = "";
-	private $db_dbname = "ktru";
 	private $conn;
 
 	// Parse stats
 	public $ins = 0;
 	public $upd = 0;
 	public $del = 0;
-
-	// Files folder
-	public $files_folder = './import_files';
-	public $src_files_folder = './src_files';
 
 	// Files
 	public $filesXML = array();
@@ -31,17 +23,36 @@ class Api
 	// Errors
 	public $errors = array();
 
+	// Config
+	public $config;
 
+	public static $pg_collection;
+	public static $no_okei;
 
 	const ZAKUPKI_NAMESPACE = "http://zakupki.gov.ru/oos/types/1";
-	const PG_COLLECTION = 'public';
-	const NO_OKEI = 283;
 
 	const SINGLE_VALUE = 'SINGLE_VALUE';
 	const MULTI_VALUE = 'MULTI_VALUE';
 	const FINAL_VALUE = 'FINAL';
 
 	public function __construct() {
+		// Load config
+		$this->config = json_decode(file_get_contents('./config.json'));
+		
+		// DB variables
+		$this->db_username = $this->config->database->username;
+		$this->db_password = $this->config->database->password;
+		$this->db_dbname = $this->config->database->database;
+		self::$pg_collection = $this->config->database->collection;
+
+		// File variables
+		$this->files_folder = './'.$this->config->files->import_folder;
+		$this->src_files_folder = './'.$this->config->files->archive_folder;
+		$this->error_log = './'.$this->config->files->error_log;
+		
+		// Stuff
+		self::$no_okei = $this->config->no_okei;
+
 		// Set up DB connection
 		$this->conn = pg_Connect("dbname=".$this->db_dbname." user=".$this->db_username." password=".$this->db_password);
 	}
@@ -109,7 +120,7 @@ class Api
 	}
 
 	private function getColumnValueById($table, $id, $column){
-		$query = "SELECT ".$column." FROM ".self::PG_COLLECTION.".".$table." WHERE id=".$id;
+		$query = "SELECT ".$column." FROM ".self::$pg_collection.".".$table." WHERE id=".$id;
 		$result = pg_exec($this->conn, $query);
 		$numrows = pg_numrows($result);
 		if($numrows > 0){
@@ -128,7 +139,7 @@ class Api
 				$helper_array[] = $column."='".$value."'";
 			}
 			$condition = implode(" AND ", $helper_array);
-			$query = "SELECT * FROM ".self::PG_COLLECTION.".".$table." WHERE ".$condition;
+			$query = "SELECT * FROM ".self::$pg_collection.".".$table." WHERE ".$condition;
 			$result = pg_exec($this->conn, $query);
 			$numrows = pg_numrows($result);
 			if($numrows > 0){
@@ -160,7 +171,7 @@ class Api
 			}
 			$key_value_string = implode(" , ", $key_value_array);
 
-			$query = "UPDATE \"".self::PG_COLLECTION."\".\"".$table."\" SET ".$key_value_string." WHERE id=".$id;
+			$query = "UPDATE \"".self::$pg_collection."\".\"".$table."\" SET ".$key_value_string." WHERE id=".$id;
 			$result = pg_exec($this->conn, $query);
 			$this->upd += pg_affected_rows($result);
 
@@ -178,7 +189,7 @@ class Api
 			$columns = implode(" , ", $helper_columns);
 			$values = implode(" , ", $helper_value);
 
-			$query = "INSERT INTO \"".self::PG_COLLECTION."\".\"".$table."\" (".$columns.") VALUES (".$values.")";
+			$query = "INSERT INTO \"".self::$pg_collection."\".\"".$table."\" (".$columns.") VALUES (".$values.")";
 
 			if($return_id){
 				$query .= " RETURNING id";
@@ -204,7 +215,7 @@ class Api
 	}
 
 	public function getTableData($table){
-		$query = "SELECT * FROM ".self::PG_COLLECTION.".".$table;
+		$query = "SELECT * FROM ".self::$pg_collection.".".$table;
 		$result = pg_exec($this->conn, $query);
 		$numrows = pg_numrows($result);
 
@@ -545,7 +556,7 @@ class Api
 
 								if($this->import_dataXLSX[$index]['E']){
 									if($this->import_dataXLSX[$index]['E'] == 'x' || $this->import_dataXLSX[$index]['E'] == 'х'){
-										$okei_id = self::NO_OKEI;
+										$okei_id = self::$no_okei;
 									} else {
 										$id = $this->findTableValueId('list_okei', array('symbol' => $this->import_dataXLSX[$index]['E']));
 										$okei_id = $this->getColumnValueById('list_okei', $id, 'code');
@@ -711,7 +722,7 @@ class Api
 							$new_record = $this->findTableValueId('nsi_ktru_value_characteristic', array(
 								'characteristic_id' => $characteristic_id,
 								'value' => $batch['ktru_value_characterisctic'][$k]['value'],
-								'okei_id' => self::NO_OKEI
+								'okei_id' => self::$no_okei
 							), true);
 
 							if(!$new_record){
@@ -812,7 +823,13 @@ class Api
 
 				// nsi_ktru_catalog
 				if($nsi_ktru_category_id){
-					$lft_val = explode(".", $batch['list_okpd2']['code'])[0];
+
+					if (strpos($batch['list_okpd2']['code'], '.') !== false) {
+						$lft_val = explode(".", $batch['list_okpd2']['code'])[0];
+					}else {
+						$lft_val = $batch['list_okpd2']['code'];
+					}
+					
 					$lft_id = $this->findTableValueId('list_okpd2', array(
 						'code' => $lft_val
 					));
@@ -850,9 +867,12 @@ class Api
 
 	public function printErrors(){
 		if(count($this->errors) > 0){
-			echo "<br><hr><p>Errors / Warnings:</p><pre>";
-			print_r($this->errors);
-			echo "<pre><br><hr>";
+			$data = '';
+			foreach($this->errors as $error){
+				$now = date ('Y-m-d H:i:s', time());
+				$data .= "$now | Error: $error\n";
+			}
+			file_put_contents($this->error_log, $data, FILE_APPEND | LOCK_EX);
 		}
 	}
 
@@ -866,8 +886,8 @@ class Api
 	public function searchProduct($string){
 		$output = array();
 		$template = "SELECT p.id, p.title, p.description, c.code
-			FROM ".self::PG_COLLECTION.".".nsi_ktru_position." p
-			INNER JOIN ".self::PG_COLLECTION.".".nsi_ktru_catalog." c ON p.id = c.position_id";
+			FROM ".self::$pg_collection.".".nsi_ktru_position." p
+			INNER JOIN ".self::$pg_collection.".".nsi_ktru_catalog." c ON p.id = c.position_id";
 		
 
 		// First - try by code
@@ -893,9 +913,9 @@ class Api
 
 	public function getProductDetails($code){
 		$query = "SELECT cat.position_id, pos.title, pos.okpd_id, okpd.code as okpd_code, okpd.name as okpd_name	
-			FROM ".self::PG_COLLECTION.".".nsi_ktru_catalog." cat 
-			INNER JOIN ".self::PG_COLLECTION.".".nsi_ktru_position." pos ON cat.position_id = pos.id
-			INNER JOIN ".self::PG_COLLECTION.".".list_okpd2." okpd ON pos.okpd_id = okpd.id
+			FROM ".self::$pg_collection.".".nsi_ktru_catalog." cat 
+			INNER JOIN ".self::$pg_collection.".".nsi_ktru_position." pos ON cat.position_id = pos.id
+			INNER JOIN ".self::$pg_collection.".".list_okpd2." okpd ON pos.okpd_id = okpd.id
 			WHERE lower(cat.code)='".$code."'";
 		$results = pg_exec($this->conn, $query);
 		$numrows = pg_numrows($results);
@@ -905,7 +925,7 @@ class Api
 			// get characteristics
 			foreach($data as $k=>$item){
 				$data[$k]['characteristics'] = array();
-				$query = "SELECT characteristic_id as id FROM ".self::PG_COLLECTION.".".nsi_ktru_position_characteristic." WHERE position_id=".$item['position_id'];
+				$query = "SELECT characteristic_id as id FROM ".self::$pg_collection.".".nsi_ktru_position_characteristic." WHERE position_id=".$item['position_id'];
 				$characteristics = pg_exec($this->conn, $query);
 				$numchars = pg_numrows($characteristics);
 				if($numchars > 0){
@@ -913,10 +933,10 @@ class Api
 
 					foreach($chars as $char){
 						$query = "SELECT c.title, c.kind_id, cv.value, cr.min_value, cr.min_notation, cr.max_value, cr.max_notation, u.symbol as units
-							FROM ".self::PG_COLLECTION.".".nsi_ktru_characteristic." c
-							INNER JOIN ".self::PG_COLLECTION.".".nsi_ktru_value_characteristic." cv ON c.id = cv.characteristic_id
-							LEFT OUTER JOIN ".self::PG_COLLECTION.".".nsi_ktru_value_range." cr ON cv.value_range_id = cr.id
-							INNER JOIN ".self::PG_COLLECTION.".".list_okei." u ON cv.okei_id = u.id
+							FROM ".self::$pg_collection.".".nsi_ktru_characteristic." c
+							INNER JOIN ".self::$pg_collection.".".nsi_ktru_value_characteristic." cv ON c.id = cv.characteristic_id
+							LEFT OUTER JOIN ".self::$pg_collection.".".nsi_ktru_value_range." cr ON cv.value_range_id = cr.id
+							INNER JOIN ".self::$pg_collection.".".list_okei." u ON cv.okei_id = u.id
 							WHERE c.id=".$char['id'];
 						$res = pg_exec($this->conn, $query);
 						if(pg_numrows($res) > 0){
@@ -951,7 +971,7 @@ class Api
 	private function getCategorySubItems($code){
 
 		$table = 'list_okpd2';
-		$query = "SELECT code, name FROM ".self::PG_COLLECTION.".".$table." WHERE parent_code='".$code."'";
+		$query = "SELECT code, name FROM ".self::$pg_collection.".".$table." WHERE parent_code='".$code."'";
 		$result = pg_exec($this->conn, $query);
 		$numrows = pg_numrows($result);
 		$kid_items = array();

@@ -12,11 +12,13 @@
 		$api->importData();
 		$api->printErrors();
 		$api->printStats();
+		
 	}else if($mode == 'load'){
 		$api->unzipSrcFiles();
 	}else{
 		echo 'Unknown method';
 	}
+
 	
 
 ?>
