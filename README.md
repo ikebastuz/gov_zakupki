@@ -18,7 +18,13 @@ PHP v.5.4 +
         "import_folder" : "import_files",
         "error_log" : "error.log"
     },
-    "scan_period" : 86400
+    "scan_period" : 86400,
+    "ftp" : {
+        "host" : "",
+        "user" : "",
+        "password" : "",
+        "path" : ""
+    }
 }
 ```
 
@@ -29,7 +35,7 @@ error_log - файл с логами ошибок
 
 
 Использование:  
-/parser/load - распаковать файлы из папки archive_folder в папку import_folder  
+/parser/load - Подключение по ftp, скачивание архивов в папку archive_folder и распаковка их в папку import_folder для обработки
 /parser/run - запустить парсер  
 
 /product/search/запрос - поиск по продуктам по входжению или ключу  

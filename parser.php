@@ -14,7 +14,7 @@
 		$api->printStats();
 		
 	}else if($mode == 'load'){
-		$api->unzipSrcFiles();
+		$api->prepareFiles();
 	}else{
 		echo 'Unknown method';
 	}

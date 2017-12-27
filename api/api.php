@@ -75,9 +75,16 @@ class Api
 		$this->proceedImport();
 	}
 
-	public function unzipSrcFiles(){
+	public function prepareFiles(){
 		$this->findLocalFiles(true);
 
+		$this->donwloadFiles();
+
+		$this->unzipSrcFiles();
+		
+	}
+
+	private function unzipSrcFiles(){
 		$zip = new ZipArchive;
 		$dir = new DirectoryIterator($this->src_files_folder);
 		foreach ($dir as $k=>$fileinfo) {
@@ -93,6 +100,39 @@ class Api
 					} else {
 					}
 				}
+			}
+		}
+	}
+
+	
+
+	private function donwloadFiles(){
+		// delete everything from source folder 
+		$dir = new DirectoryIterator($this->src_files_folder);
+		foreach ($dir as $k=>$fileinfo) {
+		    if (!$fileinfo->isDot()) {
+		    	$fileName = $fileinfo->getFilename();	
+				unlink($this->src_files_folder."/".$fileName);
+		    }
+		}
+
+		// connect to ftp
+		$conn_id = ftp_connect($this->config->ftp->host);
+		ftp_set_option($conn_id, FTP_TIMEOUT_SEC, 180);
+		ftp_pasv($conn_id, TRUE);  
+
+		$login_result = ftp_login($conn_id, $this->config->ftp->user, $this->config->ftp->password);
+		$serverPath = $this->config->ftp->path;
+
+		$contents_on_server = ftp_nlist($conn_id, $serverPath);
+		if(count($contents_on_server) > 0){
+			foreach($contents_on_server as $server_file){
+				$fileName = end(explode("/", $server_file));
+
+				$local_file = $this->src_files_folder."/".$fileName;
+				$handle = fopen($local_file, 'w');
+				ftp_fget($conn_id, $handle, $server_file, FTP_ASCII, 0);
+				fclose($handle);
 			}
 		}
 	}
