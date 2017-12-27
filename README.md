@@ -18,7 +18,10 @@ PHP v.5.4 +
         "import_folder" : "import_files",
         "error_log" : "error.log"
     },
-    "scan_period" : 86400,
+    "sync_periods": {
+        "donwload_src" : 86400,
+        "parse" : 86400
+    },
     "ftp" : {
         "host" : "",
         "user" : "",
