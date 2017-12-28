@@ -161,7 +161,10 @@ class Api
 		    if (!$fileinfo->isDot()) {
 				$fileName = $fileinfo->getFilename();
 
-				unzip($this->src_files_folder."/".$fileName, $this->files_folder."/", false, false);
+				$fileNameArr = explode(".", $fileName);
+				if($fileNameArr[count($fileNameArr) - 1] == 'zip'){
+					unzip($this->src_files_folder."/".$fileName, $this->files_folder."/", false, false);
+				}
 			}
 		}
 	}
