@@ -87,6 +87,8 @@ class Api
 		}
 		
 		
+		
+		
 	}
 
 	private function unzipSrcFilesLegacy(){
@@ -157,19 +159,20 @@ class Api
 		}
 
 		$dir = new DirectoryIterator($this->src_files_folder);
+		$cwd = getcwd();
 		foreach ($dir as $k=>$fileinfo) {
 		    if (!$fileinfo->isDot()) {
 				$fileName = $fileinfo->getFilename();
 
 				$fileNameArr = explode(".", $fileName);
 				if($fileNameArr[count($fileNameArr) - 1] == 'zip'){
-					unzip($this->src_files_folder."/".$fileName, $this->files_folder."/", false, false);
+					unzip($cwd."/".$this->src_files_folder."/".$fileName, $cwd."/".$this->files_folder."/", false, false);
 				}
 			}
 		}
 	}
 	private function unzipSrcFiles(){
-
+		$cwd = getcwd();
 		$zip = new ZipArchive;
 		$dir = new DirectoryIterator($this->src_files_folder);
 		foreach ($dir as $k=>$fileinfo) {
@@ -178,9 +181,9 @@ class Api
 				
 				$fileNameArr = explode(".", $fileName);
 				if($fileNameArr[count($fileNameArr) - 1] == 'zip'){
-					$res = $zip->open($this->src_files_folder."/".$fileName);
+					$res = $zip->open($cwd."/".$this->src_files_folder."/".$fileName);
 					if ($res === TRUE) {
-						$zip->extractTo($this->files_folder);
+						$zip->extractTo($cwd."/".$this->files_folder);
 						$zip->close();
 					} else {
 					}
