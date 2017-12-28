@@ -27,14 +27,16 @@ PHP v.5.4 +
         "user" : "",
         "password" : "",
         "path" : ""
-    }
+    },
+    "unzipLegacy" : true
 }
 ```
 
 no_okei - id записи для товаров без единиц измерения  
 archive_folder - папка для загрузки архивов xml  
 import_folder - папка для файлов xml (в коротую парсер распакует файлы из папки archive_folder по команде load)  
-error_log - файл с логами ошибок
+error_log - файл с логами ошибок  
+unzipLegacy - true - использование альтернативных встроенных методов распаковки php
 
 
 Использование:  
