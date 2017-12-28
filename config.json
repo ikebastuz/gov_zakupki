@@ -22,5 +22,5 @@
         "password" : "free",
         "path" : "/fcs_nsi/nsiKTRU/"
     },
-    "unzipLegacy" : true
+    "unzipLegacy" : false
 }

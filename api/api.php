@@ -36,6 +36,8 @@ class Api
 	const FINAL_VALUE = 'FINAL';
 
 	public function __construct() {
+		$cwd = getcwd();
+
 		// Load config
 		$this->config = json_decode(file_get_contents('./config.json'));
 		
@@ -47,15 +49,15 @@ class Api
 		self::$pg_collection = $this->config->database->collection;
 
 		// File variables
-		$this->files_folder = './'.$this->config->files->import_folder;
-		$this->src_files_folder = './'.$this->config->files->archive_folder;
-		$this->error_log = './'.$this->config->files->error_log;
+		$this->files_folder = $cwd."/".$this->config->files->import_folder;
+		$this->src_files_folder = $cwd."/".$this->config->files->archive_folder;
+		$this->error_log = $cwd."/".$this->config->files->error_log;
 		
 		// Stuff
 		self::$no_okei = $this->config->no_okei;
 
 		// Set up DB connection
-		$this->conn = pg_Connect("host=".$this->db_host." dbname=".$this->db_dbname." user=".$this->db_username." password=".$this->db_password);
+		//$this->conn = pg_Connect("host=".$this->db_host." dbname=".$this->db_dbname." user=".$this->db_username." password=".$this->db_password);
 	}
 
 	public function importData(){
@@ -159,31 +161,30 @@ class Api
 		}
 
 		$dir = new DirectoryIterator($this->src_files_folder);
-		$cwd = getcwd();
 		foreach ($dir as $k=>$fileinfo) {
 		    if (!$fileinfo->isDot()) {
 				$fileName = $fileinfo->getFilename();
 
 				$fileNameArr = explode(".", $fileName);
 				if($fileNameArr[count($fileNameArr) - 1] == 'zip'){
-					unzip($cwd."/".$this->src_files_folder."/".$fileName, $cwd."/".$this->files_folder."/", false, false);
+					unzip($this->src_files_folder."/".$fileName, $this->files_folder."/", false, false);
 				}
 			}
 		}
 	}
 	private function unzipSrcFiles(){
-		$cwd = getcwd();
 		$zip = new ZipArchive;
 		$dir = new DirectoryIterator($this->src_files_folder);
+		
 		foreach ($dir as $k=>$fileinfo) {
 		    if (!$fileinfo->isDot()) {
 				$fileName = $fileinfo->getFilename();
 				
 				$fileNameArr = explode(".", $fileName);
 				if($fileNameArr[count($fileNameArr) - 1] == 'zip'){
-					$res = $zip->open($cwd."/".$this->src_files_folder."/".$fileName);
+					$res = $zip->open($this->src_files_folder."/".$fileName);
 					if ($res === TRUE) {
-						$zip->extractTo($cwd."/".$this->files_folder);
+						$zip->extractTo($this->files_folder);
 						$zip->close();
 					} else {
 					}
@@ -218,9 +219,9 @@ class Api
 				$fileNameArray = explode("/", $server_file);
 				$fileName = end($fileNameArray);
 
-				$local_file = $this->src_files_folder."/".$fileName;
+				$local_file =$this->src_files_folder."/".$fileName;
 				$handle = fopen($local_file, 'w');
-				ftp_fget($conn_id, $handle, $server_file, FTP_ASCII, 0);
+				ftp_fget($conn_id, $handle, $server_file, FTP_BINARY, 0);
 				fclose($handle);
 			}
 		}
