@@ -127,7 +127,8 @@ class Api
 		$contents_on_server = ftp_nlist($conn_id, $serverPath);
 		if(count($contents_on_server) > 0){
 			foreach($contents_on_server as $server_file){
-				$fileName = end(explode("/", $server_file));
+				$fileNameArray = explode("/", $server_file);
+				$fileName = end($fileNameArray);
 
 				$local_file = $this->src_files_folder."/".$fileName;
 				$handle = fopen($local_file, 'w');
