@@ -57,7 +57,7 @@ class Api
 		self::$no_okei = $this->config->no_okei;
 
 		// Set up DB connection
-		//$this->conn = pg_Connect("host=".$this->db_host." dbname=".$this->db_dbname." user=".$this->db_username." password=".$this->db_password);
+		$this->conn = pg_Connect("host=".$this->db_host." dbname=".$this->db_dbname." user=".$this->db_username." password=".$this->db_password);
 	}
 
 	public function importData(){
@@ -66,12 +66,6 @@ class Api
 		// prepare xml files
 		$this->loadLocalFilesXML();	
 		$this->createImportBatchesXML();
-
-		//prepare xls files
-		/*
-		$this->loadLocalFilesXLSX();
-		$this->createImportBatchesXLSX();
-		*/
 
 		// make import
 		$this->proceedImport();
