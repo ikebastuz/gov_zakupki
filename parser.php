@@ -1,6 +1,6 @@
 <?php 
-	set_time_limit(300);
-	ini_set('memory_limit', '1024M');
+	set_time_limit(0);
+	ini_set('memory_limit', '2048M');
 
 	require_once('./api/api.php');
 

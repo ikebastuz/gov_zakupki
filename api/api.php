@@ -9,6 +9,9 @@ class Api
 	public $ins = 0;
 	public $upd = 0;
 	public $del = 0;
+	
+	public $to_import_items = 0;
+	public $imported_items = 0;
 
 	// Files
 	public $filesXML = array();
@@ -34,6 +37,8 @@ class Api
 	const SINGLE_VALUE = 'SINGLE_VALUE';
 	const MULTI_VALUE = 'MULTI_VALUE';
 	const FINAL_VALUE = 'FINAL';
+
+	public $debug = true;
 
 	public function __construct() {
 		$cwd = getcwd();
@@ -259,13 +264,30 @@ class Api
 	 
 	private function findTableValueId($table, $data, $create = false, $return_id = true){	
 		if(is_array($data) && count($data) > 0){
+			//$helper_array = array();
+
 			$helper_array = array();
+			$values = array();
+			$i = 1;
 			foreach($data as $column=>$value){
-				$helper_array[] = $column."='".$value."'";
+				//$helper_array[] = $column."='".$value."'";
+				$helper_array[] = $column." = $".$i;
+				$values[] = $value;
+				$i++;
 			}
+			$helper_array = implode(' AND ', $helper_array);
+			/*
 			$condition = implode(" AND ", $helper_array);
 			$query = "SELECT * FROM ".self::$pg_collection.".".$table." WHERE ".$condition;
 			$result = pg_exec($this->conn, $query);
+			*/
+			$query = "SELECT * FROM ".self::$pg_collection.".".$table." WHERE ".$helper_array;
+			/* debug
+			echo $query."<br>";
+			var_dump($values); echo '<br><hr>';
+			*/
+			$result = pg_query_params($this->conn, $query, $values);
+
 			$numrows = pg_numrows($result);
 			if($numrows > 0){
 				if($return_id){
@@ -284,7 +306,7 @@ class Api
 		if(!$id && $create){
 			$id = $this->createTableValue($table, $data, $return_id);
 		}
-		
+
 		return $id;
 	}
 
@@ -306,27 +328,40 @@ class Api
 	private function createTableValue($table, $data, $return_id = true){
 		if(is_array($data) && count($data) > 0){
 			$helper_columns = array();
-			$helper_values = array();
+			//$helper_values = array();
+
+			$query_helper = array();
+			$query_values = array();
+			$i = 1;
 			foreach($data as $column=>$value){
 				$helper_columns[] = '"'.$column.'"';
-				$helper_value[] = "'".$value."'";
+				//$helper_value[] = "'".$value."'";
+
+				$query_values_placeholders[] = "$".$i;
+				$query_values[] = $value;
+				$i++;
 			}
 			$columns = implode(" , ", $helper_columns);
-			$values = implode(" , ", $helper_value);
+			//$values = implode(" , ", $helper_value);
+			//$query = "INSERT INTO \"".self::$pg_collection."\".\"".$table."\" (".$columns.") VALUES (".$values.")";
 
-			$query = "INSERT INTO \"".self::$pg_collection."\".\"".$table."\" (".$columns.") VALUES (".$values.")";
-
+			$query_values_placeholders = implode(" , ", $query_values_placeholders);
+			$query = "INSERT INTO \"".self::$pg_collection."\".\"".$table."\" (".$columns.") VALUES (".$query_values_placeholders.")";
+			/* debug
+			echo $query."<br>";
+			var_dump($query_values); echo '<br><hr>';
+			*/
 			if($return_id){
 				$query .= " RETURNING id";
-
-				$result = pg_exec($this->conn, $query);
+				//$result = pg_exec($this->conn, $query);
+				$result = pg_query_params($this->conn, $query, $query_values);
 				$this->ins += pg_affected_rows($result);
 				$row = pg_fetch_assoc($result);
 				$id = $row['id'];
 				return $id;
 			} else {
-				$result = pg_exec($this->conn, $query);
-				$this->ins += pg_affected_rows($result);
+				//$result = pg_exec($this->conn, $query);
+				$result = pg_query_params($this->conn, $query, $query_values);
 				$ins = pg_affected_rows($result);
 				if($ins > 0){
 					return true;
@@ -378,8 +413,10 @@ class Api
 	private function loadLocalFilesXML(){
 		if(count($this->filesXML) > 0){
 			foreach($this->filesXML as $file){
-
 				$xmlfile = $this->files_folder."/".$file;
+				if($this->debug){
+					echo "Reading ".$xmlfile."<br>";
+				}			
 				$reader = new XMLReader();
 				$reader->open($xmlfile);
 				$data = array();
@@ -545,6 +582,7 @@ class Api
 				);
 				$this->import_batches[] = $batch;
 			}
+			$this->to_import_items = count($this->import_batches);
 		} else {
 			$this->errors[] = "No data to import from xml";
 		}
@@ -766,6 +804,9 @@ class Api
 
 	private function proceedImport(){
 		if(count($this->import_batches) > 0){
+			if($this->debug){
+				echo "Parsing data...<br>";
+			}
 			foreach($this->import_batches as $i=>$batch){
 
 				// Getting okpd_id for nsi_ktru_position
@@ -816,15 +857,20 @@ class Api
 						// If we have okei_id in ktru_value_characterisctics - we also have range and need to create it
 						if(
 							$batch['ktru_value_characterisctic'][$k]['okei_id'] && 
-							count($batch['ktru_value_range'][$k] > 0)
+							count($batch['ktru_value_range'][$k]) > 0
 						){
 							// Get/create nsi_ktru_value_range
-							$value_range_id = $this->findTableValueId('nsi_ktru_value_range', array(
-								'min_value' => $batch['ktru_value_range'][$k]['min_value'],
-								'max_value' => $batch['ktru_value_range'][$k]['max_value'],
-								'min_notation' => $batch['ktru_value_range'][$k]['min_notation'],
-								'max_notation' => $batch['ktru_value_range'][$k]['max_notation']
-							), true);
+							$range_data = array();
+							if($batch['ktru_value_range'][$k]['min_notation']){
+								$range_data['min_notation'] = $batch['ktru_value_range'][$k]['min_notation'];
+								$range_data['min_value'] = $batch['ktru_value_range'][$k]['min_value'];
+							}
+							if($batch['ktru_value_range'][$k]['max_notation']){
+								$range_data['max_notation'] = $batch['ktru_value_range'][$k]['max_notation'];
+								$range_data['max_value'] = $batch['ktru_value_range'][$k]['max_value'];
+							}
+							
+							$value_range_id = $this->findTableValueId('nsi_ktru_value_range', $range_data, true);
 
 							// Link value_range to characteristic
 							// -- get okei_id from okei_code
@@ -889,9 +935,11 @@ class Api
 				if(!$exist_id){
 					// no position in ktru_catalog table -> check or create new
 					$position_id = $this->findTableValueId('nsi_ktru_position', $prep_data, true);
+					$this->imported_items++;
 				}else{
 					// ther is position in ktru_catalog table
 					$position_id = $this->getColumnValueById('nsi_ktru_catalog', $exist_id, 'position_id');
+					$this->imported_items++;
 					$prep_data['id'] = $position_id;
 
 					// check if it needs to be updated
@@ -912,6 +960,22 @@ class Api
 
 						if(!$link_id)
 							$this->errors[] = "Can not link characteristic with position in nsi_ktru_position_characteristic table";
+					}
+				}
+
+				// Link position to nso_ktru_position_nsi if classifier exists and its not okpd2
+				if($batch['nsi_classifier_category_item'] && count($batch['nsi_classifier_category_item']) > 0){
+					foreach($batch['nsi_classifier_category_item'] as $classifier){
+						if($classifier['name'] != "ОКПД2"){
+							$data = array(
+								'position_id' => $position_id,
+								'nsi_code' => $classifier['code'],
+								'nsi_title' => $classifier['name'],
+								'nsi_item_title' => $prep_data['title'],
+								'nsi_item_desc' => $prep_data['description']
+							);
+							$classifier_link_id = $this->findTableValueId('nsi_ktru_position_nsi', $data, true);
+						}
 					}
 				}
 
@@ -1002,10 +1066,15 @@ class Api
 	}
 
 	public function printStats(){
+		/*
 		echo "<br><hr>";
 		echo "INSERTED: ".$this->ins." rows<br>";
 		echo "UPDATED: ".$this->upd." rows<br>";
 		echo "DELETED: ".$this->del." rows<br><hr>";
+		echo "<br><hr>";
+		*/
+		echo "POSITIONS TO IMPORT: ".$this->to_import_items."<br>";
+		echo "POSITIONS IMPORTED: ".$this->imported_items."<br>";
 	}
 
 	public function searchProduct($string){
