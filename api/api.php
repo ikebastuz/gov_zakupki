@@ -74,6 +74,7 @@ class Api
 
 		// make import
 		$this->proceedImport();
+		$this->clearSourceFolder();
 	}
 
 	public function prepareFiles(){
@@ -191,11 +192,7 @@ class Api
 			}
 		}
 	}
-
-	
-
-	private function donwloadFiles(){
-		// delete everything from source folder 
+	private function clearSourceFolder(){
 		$dir = new DirectoryIterator($this->src_files_folder);
 		foreach ($dir as $k=>$fileinfo) {
 		    if (!$fileinfo->isDot()) {
@@ -203,6 +200,16 @@ class Api
 				unlink($this->src_files_folder."/".$fileName);
 		    }
 		}
+	}
+	
+
+	private function donwloadFiles(){
+		// delete everything from source folder 
+		$this->clearSourceFolder();
+
+		// last date file
+		$archive_data = json_decode(file_get_contents('./archive.json'));
+		$last_file_date = $archive_data->last_file_date;
 
 		// connect to ftp
 		$conn_id = ftp_connect($this->config->ftp->host);
@@ -218,12 +225,19 @@ class Api
 				$fileNameArray = explode("/", $server_file);
 				$fileName = end($fileNameArray);
 
-				$local_file =$this->src_files_folder."/".$fileName;
-				$handle = fopen($local_file, 'w');
-				ftp_fget($conn_id, $handle, $server_file, FTP_BINARY, 0);
-				fclose($handle);
+				$file_timestamp = ftp_mdtm($conn_id, $server_file);
+				$file_date = date('d-m-Y', $file_timestamp);
+				if($file_date == $last_file_date){
+					continue;
+				} else {
+					$local_file =$this->src_files_folder."/".$fileName;
+					$handle = fopen($local_file, 'w');
+					ftp_fget($conn_id, $handle, $server_file, FTP_BINARY, 0);
+					fclose($handle);
+				}				
 			}
 		}
+		file_put_contents('./archive.json', json_encode(array('last_file_date' => $file_date)));
 	}
 
 	private function findLocalFiles($delete = false){
