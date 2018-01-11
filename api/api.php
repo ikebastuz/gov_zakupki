@@ -74,7 +74,11 @@ class Api
 
 		// make import
 		$this->proceedImport();
-		$this->clearSourceFolder();
+
+		// clear import and source folders
+		$this->clearFolder($this->src_files_folder);
+		$this->clearFolder($this->files_folder);
+
 	}
 
 	public function prepareFiles(){
@@ -87,10 +91,7 @@ class Api
 		} else {
 			$this->unzipSrcFiles();
 		}
-		
-		
-		
-		
+
 	}
 
 	private function unzipSrcFilesLegacy(){
@@ -192,24 +193,21 @@ class Api
 			}
 		}
 	}
-	private function clearSourceFolder(){
-		$dir = new DirectoryIterator($this->src_files_folder);
+	private function clearFolder($folderPath){
+		$dir = new DirectoryIterator($folderPath);
 		foreach ($dir as $k=>$fileinfo) {
 		    if (!$fileinfo->isDot()) {
 		    	$fileName = $fileinfo->getFilename();	
-				unlink($this->src_files_folder."/".$fileName);
+				unlink($folderPath."/".$fileName);
 		    }
 		}
 	}
-	
+
 
 	private function donwloadFiles(){
-		// delete everything from source folder 
-		$this->clearSourceFolder();
 
 		// last date file
 		$archive_data = json_decode(file_get_contents('./archive.json'));
-		$last_file_date = $archive_data->last_file_date;
 
 		// connect to ftp
 		$conn_id = ftp_connect($this->config->ftp->host);
@@ -220,24 +218,33 @@ class Api
 		$serverPath = $this->config->ftp->path;
 
 		$contents_on_server = ftp_nlist($conn_id, $serverPath);
+		
+		$loaded_Files = 0;
 		if(count($contents_on_server) > 0){
 			foreach($contents_on_server as $server_file){
 				$fileNameArray = explode("/", $server_file);
 				$fileName = end($fileNameArray);
 
-				$file_timestamp = ftp_mdtm($conn_id, $server_file);
-				$file_date = date('d-m-Y', $file_timestamp);
-				if($file_date == $last_file_date){
+				if(in_array($fileName, $archive_data->processed_files)){
+					// skip files already loaded
 					continue;
 				} else {
 					$local_file =$this->src_files_folder."/".$fileName;
 					$handle = fopen($local_file, 'w');
 					ftp_fget($conn_id, $handle, $server_file, FTP_BINARY, 0);
 					fclose($handle);
-				}				
+
+					$archive_data->processed_files[] = $fileName;
+					$loaded_Files++;
+				}
+
 			}
 		}
-		file_put_contents('./archive.json', json_encode(array('last_file_date' => $file_date)));
+		$archive_data->last_sync = date('d-m-Y', time());
+		file_put_contents('./archive.json', json_encode($archive_data));
+
+		echo "Loaded new files: ".$loaded_Files."<br>";
+		
 	}
 
 	private function findLocalFiles($delete = false){
