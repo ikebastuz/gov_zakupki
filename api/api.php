@@ -838,7 +838,7 @@ class Api
 					if(count($batch['nsi_classifier_category_item']) > 0){
 						$okpd_id = $this->findOkpdByClassifier($batch['nsi_classifier_category_item']);
 						if(!$okpd_id)
-							$this->errors[] = "Cant find okpd_id by alternative classifier in nso_classifier_category_item";
+							$this->errors[] = "Cant find okpd_id by alternative classifier in nso_classifier_category_item (".$batch['nsi_classifier_category_item'].")";
 					} else {
 						$this->errors[] = "No list_okpd2 array in batch and no alternative classifiers";
 					}
@@ -849,7 +849,7 @@ class Api
 				if($batch['ktru_position']['okei_id']){
 					$okei_id = $this->findTableValueId('list_okei', array('code' => $batch['ktru_position']['okei_id']));
 				}else{
-					$this->errors[] = "No okei_id in ktru_position array in batch";
+					$this->errors[] = "(Notice) No okei_id given in ktru_position array in batch";
 				}
 
 				// Processing characteristics
@@ -1021,14 +1021,14 @@ class Api
 								'title' => $okpd2name
 							), true);
 						} else {
-							$this->errors[] = "Cant get okpd2name by id";
+							$this->errors[] = "Cant get okpd2name by id (".$okpd2id.")";
 						}
 						
 					} else {
-						$this->errors[] = "Cant get okpd2id by code";
+						$this->errors[] = "Cant get okpd2id by code (".$batch['list_okpd2']['code'].")";
 					}
 				} else {
-					$this->errors[] = "Cant fill catalog tables because there are no okpd2 ID";
+					$this->errors[] = "Cant fill catalog tables because there is no okpd2 name or code in batch";
 				}
 
 				// nsi_ktru_catalog
