@@ -849,7 +849,7 @@ class Api
 				if($batch['ktru_position']['okei_id']){
 					$okei_id = $this->findTableValueId('list_okei', array('code' => $batch['ktru_position']['okei_id']));
 				}else{
-					$this->errors[] = "(Notice) No okei_id given in ktru_position array in batch";
+					//$this->errors[] = "(Notice) No okei_id given in ktru_position array in batch";
 				}
 
 				// Processing characteristics
