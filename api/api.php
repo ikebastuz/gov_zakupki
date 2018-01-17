@@ -212,9 +212,8 @@ class Api
 		// connect to ftp
 		$conn_id = ftp_connect($this->config->ftp->host);
 		ftp_set_option($conn_id, FTP_TIMEOUT_SEC, 180);
-		ftp_pasv($conn_id, TRUE);  
-
 		$login_result = ftp_login($conn_id, $this->config->ftp->user, $this->config->ftp->password);
+		ftp_pasv($conn_id, TRUE);
 		$serverPath = $this->config->ftp->path;
 
 		$contents_on_server = ftp_nlist($conn_id, $serverPath);
@@ -849,7 +848,11 @@ class Api
 				if($batch['ktru_position']['okei_id']){
 					$okei_id = $this->findTableValueId('list_okei', array('code' => $batch['ktru_position']['okei_id']));
 				}else{
-					//$this->errors[] = "(Notice) No okei_id given in ktru_position array in batch";
+					$e = "(Notice) No okei_id given in ktru_position array in batch for \"".$batch['ktru_position']['title']."\"";
+					if($batch['list_okpd2'] && $batch['list_okpd2']['code']){
+						$e .= " (".$batch['list_okpd2']['code'].")";
+					}
+					$this->errors[] = $e;
 				}
 
 				// Processing characteristics
@@ -905,7 +908,7 @@ class Api
 							), true);
 
 							if(!$new_record){
-								$this->errors[] = "Failed to get/create nsi_ktru_value_characteristic record after value_range create for batch [".$k."]";
+								$this->errors[] = "Failed to get/create nsi_ktru_value_characteristic record after value_range create for batch \"".$batch['ktru_position']['title']."\"";
 							}
 
 						} else if($batch['ktru_value_characterisctic'][$k]['value']){
@@ -980,7 +983,7 @@ class Api
 						), true, false);
 
 						if(!$link_id)
-							$this->errors[] = "Can not link characteristic with position in nsi_ktru_position_characteristic table";
+							$this->errors[] = "Can not link characteristic with position in nsi_ktru_position_characteristic table for batch \"".$batch['ktru_position']['title']."\"";
 					}
 				}
 
@@ -1028,7 +1031,7 @@ class Api
 						$this->errors[] = "Cant get okpd2id by code (".$batch['list_okpd2']['code'].")";
 					}
 				} else {
-					$this->errors[] = "Cant fill catalog tables because there is no okpd2 name or code in batch";
+					$this->errors[] = "Cant fill catalog tables because there is no okpd2 name or code in batch \"".$batch['ktru_position']['title']."\"";
 				}
 
 				// nsi_ktru_catalog
@@ -1069,7 +1072,15 @@ class Api
 						$this->errors[] = "Failed to insert into nsi_ktru_catalog";
 					}
 				} else {
-					$this->errors[] = "Cant add record to nsi_ktru_catalog. No category id found";
+					$e = "Cant add record to nsi_ktru_catalog. No category id found ";
+					if($batch['list_okpd2']['name']){
+						$e .= " for name \"".$batch['list_okpd2']['name']."\"";
+					} else if($batch['list_okpd2']['code']){
+						$e .= " for code \"".$batch['list_okpd2']['code']."\"";
+					} else {
+						$e .= " because there is no okpd2 name or code in batch \"".$batch['ktru_position']['title']."\"";
+					}
+					$this->errors[] = $e;
 				}
 			}
 		}
